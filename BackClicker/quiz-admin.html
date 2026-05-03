@@ -1,0 +1,69 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Live Answers Test</title>
+
+    <script src="https://cdn.jsdelivr.net/npm/sockjs-client/dist/sockjs.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/stompjs/lib/stomp.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+</head>
+<body>
+
+<h2>Live Answers</h2>
+<div id="answers"></div>
+
+<h2>Live Stats</h2>
+<pre id="stats"></pre>
+
+<canvas id="chart" width="400" height="200"></canvas>
+
+<script>
+    const answersDiv = document.getElementById("answers");
+    const statsPre = document.getElementById("stats");
+
+    const ctx = document.getElementById('chart').getContext('2d');
+    let chart = new Chart(ctx, {
+        type: 'bar',
+        data: {
+            labels: ['Answer 1', 'Answer 2', 'Answer 3', 'Answer 4'],
+            datasets: [{
+                label: 'Votes',
+                data: [0,0,0,0]
+            }]
+        }
+    });
+
+    const socket = new SockJS("http://localhost:8089/ws-quiz");
+    const stompClient = Stomp.over(socket);
+
+    stompClient.connect({}, function () {
+        console.log("Connected");
+
+        // טלפונים שעונים
+        stompClient.subscribe("/topic/live-answers", msg => {
+            const p = document.createElement("div");
+            p.innerText = msg.body;
+            answersDiv.prepend(p);
+        });
+
+stompClient.subscribe("/topic/stats", msg => {
+    console.log("STATS RAW:", msg.body);
+});
+        // סטטיסטיקה חיה
+        stompClient.subscribe("/topic/stats", msg => {
+            const stats = JSON.parse(msg.body);
+            statsPre.innerText = JSON.stringify(stats, null, 2);
+
+            chart.data.datasets[0].data = [
+                stats.answer1,
+                stats.answer2,
+                stats.answer3,
+                stats.answer4
+            ];
+            chart.update();
+        });
+    });
+</script>
+
+</body>
+</html>
